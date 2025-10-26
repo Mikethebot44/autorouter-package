@@ -8,6 +8,51 @@ Auto-select the best AI model based on your query. This SDK automatically finds 
 npm install autorouter-sdk
 ```
 
+## Setup
+
+AutoRouter requires OpenAI and Pinecone credentials. You'll need:
+- OpenAI API key for generating embeddings
+- Pinecone API key for vector database storage
+
+Set them as environment variables:
+
+```bash
+export OPENAI_API_KEY='your-openai-key'
+export PINECONE_API_KEY='your-pinecone-key'
+```
+
+Or use a `.env` file:
+
+```
+OPENAI_API_KEY=your-openai-key
+PINECONE_API_KEY=your-pinecone-key
+PINECONE_INDEX_NAME=autorouter-models
+```
+
+## Initial Setup - Index Models
+
+Before using the SDK, you need to index models into your Pinecone database. Run:
+
+```bash
+npx autorouter-sdk index-models
+```
+
+Or using the CLI directly:
+
+```bash
+autorouter-sdk index-models \
+  --openai-key your-openai-key \
+  --pinecone-key your-pinecone-key \
+  --index-name autorouter-models
+```
+
+This will:
+1. Load the bundled model registry (12,000+ models)
+2. Generate embeddings for each model
+3. Index them into your Pinecone database
+
+The process takes about 10-15 minutes. You only need to run this once.
+
 ## Usage
 
 ### Basic Usage
@@ -15,7 +60,11 @@ npm install autorouter-sdk
 ```typescript
 import { AutoRouter } from 'autorouter-sdk';
 
-const router = new AutoRouter({ apiKey: 'ar_live_your_api_key_here' });
+const router = new AutoRouter({
+  openaiKey: 'your-openai-key',
+  pineconeKey: 'your-pinecone-key',
+  pineconeIndexName: 'autorouter-models' // optional, defaults to 'autorouter-models'
+});
 
 const models = await router.selectModel('build a chatbot');
 
@@ -27,9 +76,10 @@ console.log(models);
 //     description: 'A conversational AI model...',
 //     task: 'text-generation',
 //     provider: 'huggingface',
-//     license: 'llama2',
+//     license: 'apache-2.0',
 //     downloads: 5000000,
-//     score: 0.95
+//     score: 0.95,
+//     endpoint: 'https://api-inference.huggingface.co/models/...'
 //   },
 //   ...
 // ]
@@ -44,8 +94,8 @@ const models = await router.selectModel('summarize text', {
   filter: { license: 'apache-2.0' }
 });
 
-// Health check
-const isHealthy = await router.healthCheck();
+// Get top 5 models
+const topModels = await router.selectModel('generate images', { limit: 5 });
 ```
 
 ## API Reference
@@ -58,8 +108,9 @@ const isHealthy = await router.healthCheck();
 new AutoRouter(config: AutoRouterConfig)
 ```
 
-- `config.apiKey` (string): Your AutoRouter API key
-- `config.baseUrl` (string, optional): Custom server URL (defaults to production)
+- `config.openaiKey` (string): Your OpenAI API key
+- `config.pineconeKey` (string): Your Pinecone API key
+- `config.pineconeIndexName` (string, optional): Pinecone index name (defaults to 'autorouter-models')
 
 #### Methods
 
@@ -72,10 +123,6 @@ Returns an array of model recommendations sorted by relevance.
   - `limit` (number): Maximum number of results (default: 10)
   - `filter` (object): Filter options
     - `license` (string): Filter by license type (e.g., "apache-2.0", "mit")
-
-##### healthCheck()
-
-Returns a boolean indicating if the service is healthy.
 
 ### ModelResult
 
@@ -121,21 +168,30 @@ const models = await router.selectModel('summarize documents', {
 });
 ```
 
+## CLI Commands
+
+### Index Models
+
+```bash
+autorouter-sdk index-models
+```
+
+Options:
+- `--openai-key <key>`: OpenAI API key (or use OPENAI_API_KEY env var)
+- `--pinecone-key <key>`: Pinecone API key (or use PINECONE_API_KEY env var)
+- `--index-name <name>`: Pinecone index name (default: 'autorouter-models')
+- `--registry-path <path>`: Path to custom model registry JSON file
+
 ## Error Handling
 
 ```typescript
 try {
   const models = await router.selectModel('build a chatbot');
 } catch (error) {
-  if (error.message === 'Invalid API key') {
-    // Handle authentication error
-  } else {
-    // Handle other errors
-  }
+  console.error('Failed to select model:', error);
 }
 ```
 
 ## License
 
 MIT
-# autorouter-package

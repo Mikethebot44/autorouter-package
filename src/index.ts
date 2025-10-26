@@ -1,12 +1,16 @@
-import { ModelResult, SearchOptions, SearchResponse, AutoRouterConfig } from './types';
+import { ModelResult, SearchOptions, AutoRouterConfig } from './types';
+import { getPineconeIndex } from './pinecone';
+import { generateEmbedding } from './openai';
 
 export class AutoRouter {
-  private apiKey: string;
-  private baseUrl: string;
+  private openaiKey: string;
+  private pineconeKey: string;
+  private pineconeIndexName: string;
 
   constructor(config: AutoRouterConfig) {
-    this.apiKey = config.apiKey;
-    this.baseUrl = config.baseUrl || 'https://autorouter-server.vercel.app';
+    this.openaiKey = config.openaiKey;
+    this.pineconeKey = config.pineconeKey;
+    this.pineconeIndexName = config.pineconeIndexName || 'autorouter-models';
   }
 
   async selectModel(
@@ -14,49 +18,47 @@ export class AutoRouter {
     options?: SearchOptions
   ): Promise<ModelResult[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          query,
-          limit: options?.limit,
-          filter: options?.filter,
-        }),
-      });
+      // Generate embedding for the query
+      const queryEmbedding = await generateEmbedding(this.openaiKey, query);
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Invalid API key');
-        }
-        if (response.status === 400) {
-          const error = await response.json();
-          throw new Error(error.error || 'Bad request');
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Get Pinecone index
+      const index = getPineconeIndex(this.pineconeKey, this.pineconeIndexName);
+
+      // Build filter for Pinecone
+      const pineconeFilter: Record<string, { $eq: string }> = {};
+      if (options?.filter?.license) {
+        pineconeFilter.license = { $eq: options.filter.license };
       }
 
-      const data: SearchResponse = await response.json();
-      return data.models;
+      // Query Pinecone
+      const queryResponse = await index.query({
+        vector: queryEmbedding,
+        topK: options?.limit || 10,
+        includeMetadata: true,
+        filter: Object.keys(pineconeFilter).length > 0 ? pineconeFilter : undefined,
+      });
+
+      // Transform results to ModelResult format
+      const models: ModelResult[] = queryResponse.matches?.map((match) => ({
+        id: match.metadata?.id as string,
+        name: match.metadata?.name as string,
+        description: match.metadata?.description as string,
+        task: match.metadata?.task as string,
+        provider: match.metadata?.provider as string,
+        license: match.metadata?.license as string,
+        downloads: match.metadata?.downloads as number,
+        score: match.score || 0,
+        endpoint: match.metadata?.endpoint as string,
+      })) || [];
+
+      return models;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('Network error occurred');
-    }
-  }
-
-  /**
-   * Health check method to verify the service is running
-   */
-  async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/health`);
-      return response.ok;
-    } catch {
-      return false;
+      throw new Error('Failed to select model');
     }
   }
 }
+
+export { ModelResult, SearchOptions, AutoRouterConfig } from './types';

@@ -1,7 +1,9 @@
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -15,6 +17,14 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/index.ts
@@ -23,53 +33,73 @@ __export(index_exports, {
   AutoRouter: () => AutoRouter
 });
 module.exports = __toCommonJS(index_exports);
+
+// src/pinecone.ts
+var import_pinecone = require("@pinecone-database/pinecone");
+var getPineconeClient = (apiKey) => {
+  return new import_pinecone.Pinecone({
+    apiKey
+  });
+};
+var getPineconeIndex = (apiKey, indexName) => {
+  const client = getPineconeClient(apiKey);
+  return client.index(indexName);
+};
+
+// src/openai.ts
+var import_openai = __toESM(require("openai"));
+var getOpenAIClient = (apiKey) => {
+  return new import_openai.default({
+    apiKey
+  });
+};
+var generateEmbedding = async (apiKey, text) => {
+  const client = getOpenAIClient(apiKey);
+  const response = await client.embeddings.create({
+    model: "text-embedding-3-large",
+    input: text
+  });
+  return response.data[0].embedding;
+};
+
+// src/index.ts
 var AutoRouter = class {
   constructor(config) {
-    this.apiKey = config.apiKey;
-    this.baseUrl = config.baseUrl || "https://autorouter-server.vercel.app";
+    this.openaiKey = config.openaiKey;
+    this.pineconeKey = config.pineconeKey;
+    this.pineconeIndexName = config.pineconeIndexName || "autorouter-models";
   }
   async selectModel(query, options) {
     try {
-      const response = await fetch(`${this.baseUrl}/api/search`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          query,
-          limit: options?.limit,
-          filter: options?.filter
-        })
-      });
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Invalid API key");
-        }
-        if (response.status === 400) {
-          const error = await response.json();
-          throw new Error(error.error || "Bad request");
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const queryEmbedding = await generateEmbedding(this.openaiKey, query);
+      const index = getPineconeIndex(this.pineconeKey, this.pineconeIndexName);
+      const pineconeFilter = {};
+      if (options?.filter?.license) {
+        pineconeFilter.license = { $eq: options.filter.license };
       }
-      const data = await response.json();
-      return data.models;
+      const queryResponse = await index.query({
+        vector: queryEmbedding,
+        topK: options?.limit || 10,
+        includeMetadata: true,
+        filter: Object.keys(pineconeFilter).length > 0 ? pineconeFilter : void 0
+      });
+      const models = queryResponse.matches?.map((match) => ({
+        id: match.metadata?.id,
+        name: match.metadata?.name,
+        description: match.metadata?.description,
+        task: match.metadata?.task,
+        provider: match.metadata?.provider,
+        license: match.metadata?.license,
+        downloads: match.metadata?.downloads,
+        score: match.score || 0,
+        endpoint: match.metadata?.endpoint
+      })) || [];
+      return models;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error("Network error occurred");
-    }
-  }
-  /**
-   * Health check method to verify the service is running
-   */
-  async healthCheck() {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/health`);
-      return response.ok;
-    } catch {
-      return false;
+      throw new Error("Failed to select model");
     }
   }
 };

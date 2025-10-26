@@ -17,12 +17,20 @@ export interface SearchOptions {
   };
 }
 
-export interface SearchResponse {
-  models: ModelResult[];
-  total: number;
+export interface AutoRouterConfig {
+  openaiKey: string;
+  pineconeKey: string;
+  pineconeIndexName?: string;
 }
 
-export interface AutoRouterConfig {
-  apiKey: string;
-  baseUrl?: string;
+export interface HuggingFaceModel {
+  id: string;
+  downloads: number;
+  pipeline_tag?: string;
+  cardData?: {
+    description?: string;
+    license?: string;
+    tags?: string[];
+  };
+  tags?: string[];
 }

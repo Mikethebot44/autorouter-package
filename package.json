@@ -1,6 +1,6 @@
 {
   "name": "autorouter-sdk",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Auto-select the best AI model based on your query",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -13,10 +13,16 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "data"
   ],
+  "bin": {
+    "autorouter-sdk": "./dist/cli.js"
+  },
   "scripts": {
     "build": "tsup",
+    "postbuild": "node -e \"const fs = require('fs'); const path = require('path'); if (fs.existsSync(path.join(__dirname, 'data', 'model-registry.json'))) { if (!fs.existsSync(path.join(__dirname, 'dist', 'data'))) fs.mkdirSync(path.join(__dirname, 'dist', 'data'), { recursive: true }); fs.copyFileSync(path.join(__dirname, 'data', 'model-registry.json'), path.join(__dirname, 'dist', 'data', 'model-registry.json')); }\"",
+    "generate-registry": "tsx scripts/generate-model-registry.ts",
     "dev": "tsup --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -31,9 +37,16 @@
   ],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "@pinecone-database/pinecone": "^6.1.2",
+    "commander": "^12.0.0",
+    "dotenv": "^17.2.3",
+    "openai": "^6.7.0"
+  },
   "devDependencies": {
     "@types/node": "^24.9.1",
     "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }

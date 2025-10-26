@@ -16,19 +16,17 @@ interface SearchOptions {
     };
 }
 interface AutoRouterConfig {
-    apiKey: string;
-    baseUrl?: string;
+    openaiKey: string;
+    pineconeKey: string;
+    pineconeIndexName?: string;
 }
 
 declare class AutoRouter {
-    private apiKey;
-    private baseUrl;
+    private openaiKey;
+    private pineconeKey;
+    private pineconeIndexName;
     constructor(config: AutoRouterConfig);
     selectModel(query: string, options?: SearchOptions): Promise<ModelResult[]>;
-    /**
-     * Health check method to verify the service is running
-     */
-    healthCheck(): Promise<boolean>;
 }
 
-export { AutoRouter };
+export { AutoRouter, type AutoRouterConfig, type ModelResult, type SearchOptions };
