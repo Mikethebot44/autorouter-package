@@ -168,6 +168,25 @@ const models = await router.selectModel('summarize documents', {
 });
 ```
 
+## Customizing the Model Registry
+
+The package includes a pre-built registry with 7,000+ models. You can customize which models are included by modifying `scripts/generate-model-registry.ts` and running:
+
+```bash
+npm run generate-registry
+```
+
+This will regenerate `data/model-registry.json` based on your changes. Then run the indexing process again:
+
+```bash
+npx autorouter-sdk index-models
+```
+
+Key parameters in `generate-model-registry.ts`:
+- `modelsPerTask`: Number of models to fetch per task type (default: 200)
+- `taskCategories`: Which task types to include
+- `sortBy`: How to sort models (default: 'downloads')
+
 ## CLI Commands
 
 ### Index Models

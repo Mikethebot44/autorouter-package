@@ -17,12 +17,12 @@ function constructSearchableText(model: any): string {
 
 async function loadModelsFromRegistry(registryPath: string): Promise<any[]> {
   if (!fs.existsSync(registryPath)) {
-    console.error('⚠️  Registry file not found. Please ensure model-registry.json exists.');
+    console.error('Registry file not found. Please ensure model-registry.json exists.');
     process.exit(1);
   }
 
   const registry = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
-  console.log(`📚 Loaded ${registry.length} models from registry`);
+  console.log(`Loaded ${registry.length} models from registry`);
   
   return registry;
 }
@@ -52,7 +52,7 @@ export async function indexModels(
     }
     
     if (!registryPath) {
-      console.error('⚠️  Registry file not found. Please ensure model-registry.json exists.');
+      console.error('Registry file not found. Please ensure model-registry.json exists.');
       console.error('Tried:', possiblePaths);
       process.exit(1);
     }
@@ -65,13 +65,13 @@ export async function indexModels(
   const allModels = await loadModelsFromRegistry(registryPath);
 
   // Show statistics
-  console.log(`\n📊 Total models to index: ${allModels.length}`);
-  console.log(`\n🏆 Top 10 models by downloads:`);
+  console.log(`\nTotal models to index: ${allModels.length}`);
+  console.log(`\nTop 10 models by downloads:`);
   allModels.slice(0, 10).forEach((model, i) => {
     console.log(`  ${i + 1}. ${model.id} - ${model.downloads.toLocaleString()} downloads (${model.task || 'unknown'})`);
   });
 
-  console.log(`\n🚀 Processing ${allModels.length} models...`);
+  console.log(`\nProcessing ${allModels.length} models...`);
 
   // Now index the models
   for (const model of allModels) {
@@ -80,7 +80,7 @@ export async function indexModels(
       const searchableText = constructSearchableText(model);
 
       if (!searchableText.trim()) {
-        console.log(`⏭️  Skipping ${model.id} - no searchable content`);
+        console.log(`Skipping ${model.id} - no searchable content`);
         continue;
       }
 
@@ -109,18 +109,18 @@ export async function indexModels(
       ]);
 
       totalIndexed++;
-      if (totalIndexed % 100 === 0) {
-        console.log(`📊 Progress: ${totalIndexed}/${allModels.length} models indexed`);
+      if (totalIndexed % 10 === 0) {
+        console.log(`Progress: ${totalIndexed}/${allModels.length} models indexed`);
       }
 
       // Rate limiting - small delay between requests
       await new Promise(resolve => setTimeout(resolve, 100));
       
     } catch (error) {
-      console.error(`❌ Error processing model ${model.id}:`, error);
+      console.error(`Error processing model ${model.id}:`, error);
     }
   }
 
-  console.log(`\n🎉 Indexing complete! Total models indexed: ${totalIndexed}`);
+  console.log(`\nIndexing complete! Total models indexed: ${totalIndexed}`);
 }
 

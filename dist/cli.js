@@ -71,11 +71,11 @@ function constructSearchableText(model) {
 }
 async function loadModelsFromRegistry(registryPath) {
   if (!import_fs.default.existsSync(registryPath)) {
-    console.error("\u26A0\uFE0F  Registry file not found. Please ensure model-registry.json exists.");
+    console.error("Registry file not found. Please ensure model-registry.json exists.");
     process.exit(1);
   }
   const registry = JSON.parse(import_fs.default.readFileSync(registryPath, "utf-8"));
-  console.log(`\u{1F4DA} Loaded ${registry.length} models from registry`);
+  console.log(`Loaded ${registry.length} models from registry`);
   return registry;
 }
 async function indexModels(openaiKey, pineconeKey, pineconeIndexName, registryPath) {
@@ -93,7 +93,7 @@ async function indexModels(openaiKey, pineconeKey, pineconeIndexName, registryPa
       }
     }
     if (!registryPath) {
-      console.error("\u26A0\uFE0F  Registry file not found. Please ensure model-registry.json exists.");
+      console.error("Registry file not found. Please ensure model-registry.json exists.");
       console.error("Tried:", possiblePaths);
       process.exit(1);
     }
@@ -102,19 +102,19 @@ async function indexModels(openaiKey, pineconeKey, pineconeIndexName, registryPa
   let totalIndexed = 0;
   const allModels = await loadModelsFromRegistry(registryPath);
   console.log(`
-\u{1F4CA} Total models to index: ${allModels.length}`);
+Total models to index: ${allModels.length}`);
   console.log(`
-\u{1F3C6} Top 10 models by downloads:`);
+Top 10 models by downloads:`);
   allModels.slice(0, 10).forEach((model, i) => {
     console.log(`  ${i + 1}. ${model.id} - ${model.downloads.toLocaleString()} downloads (${model.task || "unknown"})`);
   });
   console.log(`
-\u{1F680} Processing ${allModels.length} models...`);
+Processing ${allModels.length} models...`);
   for (const model of allModels) {
     try {
       const searchableText = constructSearchableText(model);
       if (!searchableText.trim()) {
-        console.log(`\u23ED\uFE0F  Skipping ${model.id} - no searchable content`);
+        console.log(`Skipping ${model.id} - no searchable content`);
         continue;
       }
       const embedding = await generateEmbedding(openaiKey, searchableText);
@@ -136,16 +136,16 @@ async function indexModels(openaiKey, pineconeKey, pineconeIndexName, registryPa
         }
       ]);
       totalIndexed++;
-      if (totalIndexed % 100 === 0) {
-        console.log(`\u{1F4CA} Progress: ${totalIndexed}/${allModels.length} models indexed`);
+      if (totalIndexed % 10 === 0) {
+        console.log(`Progress: ${totalIndexed}/${allModels.length} models indexed`);
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
     } catch (error) {
-      console.error(`\u274C Error processing model ${model.id}:`, error);
+      console.error(`Error processing model ${model.id}:`, error);
     }
   }
   console.log(`
-\u{1F389} Indexing complete! Total models indexed: ${totalIndexed}`);
+Indexing complete! Total models indexed: ${totalIndexed}`);
 }
 
 // src/cli.ts

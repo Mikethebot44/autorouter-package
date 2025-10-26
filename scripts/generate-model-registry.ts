@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface ModelWithCard {
   id: string;
@@ -188,7 +188,7 @@ async function generateModelRegistry() {
   });
 
   // Save registry to autorouter-package data folder
-  const outputDir = path.join(__dirname, '..', 'data');
+  const outputDir = path.join(process.cwd(), 'data');
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
@@ -216,7 +216,8 @@ async function generateModelRegistry() {
 }
 
 // Run the registry generation
-if (require.main === module) {
+const isMainModule = import.meta.url === `file://${process.argv[1]}` || require.main === module;
+if (isMainModule) {
   generateModelRegistry().catch(console.error);
 }
 
